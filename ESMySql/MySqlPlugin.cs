@@ -10,7 +10,6 @@ namespace ESMySql
 {
     class MySqlPlugin : BaseScript
     {
-        bool _mReady = false;
         private MySQL _mySQL;
         private GHMattiTaskScheduler _scheduler;
 
@@ -42,32 +41,31 @@ namespace ESMySql
             }));
             //Check if user exists
             EventHandlers.Add("es_db:retrieveUser", new Action<string, CallbackDelegate>(async (identifier, cb) =>
+            {
+                Utils.DebugWriteLine($"Retriving user for {identifier}");
+                MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE identifier=@identifier;", new Dictionary<string, dynamic> { { "@identifier", identifier } });
+                await Delay(0);
+                if (result.Count >= 1)
                 {
-                    Utils.DebugWriteLine($"Retriving user for {identifier}");
-                    MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE identifier=@identifier;", new Dictionary<string, dynamic> { { "@identifier", identifier } });
-                    await Delay(0);
-                    if (result.Count >= 1)
-                    {
-
-                        cb.Invoke(result[0]);
-                    }
-                    else
-                    {
-                        cb.Invoke(false);
-                    }
-                }));
+                    cb.Invoke(result[0]);
+                }
+                else
+                {
+                    cb.Invoke(false);
+                }
+            }));
 
             //Create new Essentialmode user
             EventHandlers.Add("es_db:createUser", new Action<string, string, int, int>((identifier, license, cash, bank) =>
-               {
-                   Utils.DebugWriteLine($"Creating user for {identifier}");
-                   _mySQL.Query("INSERT INTO users (`identifier`, `money`, `bank`, `group`, `permission_level`, `license`) VALUES (@identifier, @cash, @bank, 'user', 0, @license);", new Dictionary<string, dynamic> {
+            {
+                Utils.DebugWriteLine($"Creating user for {identifier}");
+                _mySQL.Query("INSERT INTO users (`identifier`, `money`, `bank`, `group`, `permission_level`, `license`) VALUES (@identifier, @cash, @bank, 'user', 0, @license);", new Dictionary<string, dynamic> {
                        {"@identifier", identifier},
                        {"@license", license},
                        {"@cash", cash},
                        {"@bank", bank},
                    });
-               }));
+            }));
 
             //Retrieve User by license
             EventHandlers.Add("es_db:retrieveLicensedUser", new Action<string, CallbackDelegate>(async (identifier, cb) =>
@@ -96,34 +94,32 @@ namespace ESMySql
 
             //Update user
             EventHandlers.Add("es_db:updateUser", new Action<string, dynamic, CallbackDelegate>(async (identifier, update, cb) =>
-              {
-                  Utils.DebugWriteLine($"Updating user {identifier}");
-                  StringBuilder sb = new StringBuilder();
-                  IDictionary<string, object> pairs = (IDictionary<string, object>)update;
-                  Dictionary<string, dynamic> parameters = new Dictionary<string, dynamic>();
-                  parameters["@identifier"] = identifier;
+            {
+                Utils.DebugWriteLine($"Updating user {identifier}");
+                StringBuilder sb = new StringBuilder();
+                IDictionary<string, object> pairs = (IDictionary<string, object>)update;
+                Dictionary<string, dynamic> parameters = new Dictionary<string, dynamic>();
+                parameters["@identifier"] = identifier;
 
-                  int updateLength = 0;
-                  foreach (KeyValuePair<string, object> kvp in pairs)
-                  {
-                      parameters["@" + kvp.Key] = kvp.Value;
-                      sb.Append(kvp.Key);
-                      sb.Append("=@");
-                      sb.Append(kvp.Key);
-                      updateLength++;
-                      if(updateLength != pairs.Count)
-                          sb.Append(",");
-                  }
-                  string query = $"UPDATE users SET {sb.ToString()} WHERE identifier=@identifier;";
-                  Utils.DebugWriteLine($"Update query is {query}");
-                  long result = await _mySQL.Query(query, parameters);
-                  await Delay(0);
-                  cb.Invoke((result == 1));
-              }));
+                int updateLength = 0;
+                foreach (KeyValuePair<string, object> kvp in pairs)
+                {
+                    parameters["@" + kvp.Key] = kvp.Value;
+                    sb.Append(kvp.Key);
+                    sb.Append("=@");
+                    sb.Append(kvp.Key);
+                    updateLength++;
+                    if (updateLength != pairs.Count)
+                        sb.Append(",");
+                }
+                string query = $"UPDATE users SET {sb.ToString()} WHERE identifier=@identifier;";
+                Utils.DebugWriteLine($"Update query is {query}");
+                long result = await _mySQL.Query(query, parameters);
+                await Delay(0);
+                cb.Invoke((result == 1));
+            }));
 
             _mySQL = new MySQL(settings, _scheduler);
-            _mReady = true;
-
         }
     }
 }
