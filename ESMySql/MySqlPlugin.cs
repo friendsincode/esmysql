@@ -28,14 +28,14 @@ namespace ESMySql
             settings.XMLConfiguration = new Dictionary<string, string>() { { "MySQL:UseConvars", "true" } };
 
             EventHandlers.Add("es_db:firstRunCheck", new Action(() =>
-                {
-                    Utils.DebugWriteLine("First check is done nothing to see here :P");
-                }));
+            {
+                Utils.DebugWriteLine("First check is done nothing to see here :P");
+            }));
 
             EventHandlers.Add("es_db:doesUserExist", new Action<string, CallbackDelegate>(async (identifier, cb) =>
             {
                 Utils.DebugWriteLine($"Checking for user with {identifier}");
-                MySQLResult result = await _mySQL.QueryResult($"SELECT * FROM users WHERE `identifier`=@identifier;", new Dictionary<string, dynamic> { { "@identifier", identifier } });
+                MySQLResult result = await _mySQL.QueryResult($"SELECT * FROM users WHERE `identifier`=@identifier LIMIT 1;", new Dictionary<string, dynamic> { { "@identifier", identifier } });
                 await Delay(0);
                 cb.Invoke((result.Count == 1));
             }));
@@ -43,7 +43,7 @@ namespace ESMySql
             EventHandlers.Add("es_db:retrieveUser", new Action<string, CallbackDelegate>(async (identifier, cb) =>
             {
                 Utils.DebugWriteLine($"Retriving user for {identifier}");
-                MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE identifier=@identifier;", new Dictionary<string, dynamic> { { "@identifier", identifier } });
+                MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE identifier=@identifier LIMIT 1;", new Dictionary<string, dynamic> { { "@identifier", identifier } });
                 await Delay(0);
                 if (result.Count >= 1)
                 {
@@ -71,7 +71,7 @@ namespace ESMySql
             EventHandlers.Add("es_db:retrieveLicensedUser", new Action<string, CallbackDelegate>(async (identifier, cb) =>
             {
                 Utils.DebugWriteLine($"Retriving user with license {identifier}");
-                MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE `license`=@license;", new Dictionary<string, dynamic> { { "@license", identifier } });
+                MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE `license`=@license LIMIT 1;", new Dictionary<string, dynamic> { { "@license", identifier } });
                 await Delay(0);
                 if (result.Count >= 1)
                 {
@@ -87,7 +87,7 @@ namespace ESMySql
             EventHandlers.Add("es_db:doesLicensedUserExist", new Action<string, CallbackDelegate>(async (identifier, cb) =>
             {
                 Utils.DebugWriteLine($"Checking for user with license {identifier}");
-                MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE `license`=@license;", new Dictionary<string, dynamic> { { "@license", identifier } });
+                MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE `license`=@license LIMIT 1;", new Dictionary<string, dynamic> { { "@license", identifier } });
                 await Delay(0);
                 cb.Invoke((result.Count == 1));
             }));
@@ -112,7 +112,7 @@ namespace ESMySql
                     if (updateLength != pairs.Count)
                         sb.Append(",");
                 }
-                string query = $"UPDATE users SET {sb.ToString()} WHERE identifier=@identifier;";
+                string query = $"UPDATE users SET {sb.ToString()} WHERE identifier=@identifier LIMIT 1;";
                 Utils.DebugWriteLine($"Update query is {query}");
                 long result = await _mySQL.Query(query, parameters);
                 await Delay(0);
