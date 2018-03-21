@@ -24,7 +24,7 @@ namespace ESMySql
             Initialization();
         }
 
-        private async void Initialization()
+        private void Initialization()
         {
             Utils.ReleaseWrite($"Thank you for choosing Friends in Code. {Environment.NewLine} Enjoy this Essential Mode Mysql Plugin. {Environment.NewLine} Credits to zr0iq for this wonderful async library for Mysql{Environment.NewLine}");
             MySQLSettings settings = new MySQLSettings();
@@ -33,10 +33,7 @@ namespace ESMySql
             string xml = API.LoadResourceFile(API.GetCurrentResourceName(), "settings.xml");
             Utils.DebugWrite(xml);
             XDocument xDocument = XDocument.Parse(xml);
-            settings.XMLConfiguration = xDocument.Descendants("setting").ToDictionary(
-                setting => setting.Attribute("key").Value,
-                setting => setting.Value
-            );
+            settings.XMLConfiguration = new Dictionary<string, string>() { { "MySQL:UseConvars", "true" } };
             //_mySQL = new MySQL(settings, _scheduler);
             //_mReady = true;
 
