@@ -5,10 +5,6 @@ using System.Collections.Generic;
 using System.Text;
 using GHMatti.MySQL;
 using GHMatti.Core;
-using System.Threading.Tasks;
-using System.Xml.Linq;
-using System.IO;
-using System.Linq;
 
 namespace ESMySql
 {
@@ -30,12 +26,7 @@ namespace ESMySql
             MySQLSettings settings = new MySQLSettings();
             settings.ConvarConnectionString = API.GetConvar("mysql_connection_string", "");
             settings.ConvarDebug = API.GetConvar("mysql_debug", "true");
-            string xml = API.LoadResourceFile(API.GetCurrentResourceName(), "settings.xml");
-            Utils.DebugWrite(xml);
-            XDocument xDocument = XDocument.Parse(xml);
             settings.XMLConfiguration = new Dictionary<string, string>() { { "MySQL:UseConvars", "true" } };
-            //_mySQL = new MySQL(settings, _scheduler);
-            //_mReady = true;
 
             EventHandlers.Add("es_db:firstRunCheck", new Action(() =>
                 {
@@ -45,7 +36,7 @@ namespace ESMySql
             EventHandlers.Add("es_db:doesUserExist", new Action<string, CallbackDelegate>(async (identifier, cb) =>
             {
                 Utils.DebugWriteLine($"Checking for user with {identifier}");
-                MySQLResult result = await _mySQL.QueryResult($"SELECT * FROM users WHERE `identifier`='{identifier}';");
+                MySQLResult result = await _mySQL.QueryResult($"SELECT * FROM users WHERE `identifier`=@identifier;", new Dictionary<string, dynamic> { { "@identifier", identifier } });
                 await Delay(0);
                 cb.Invoke((result.Count == 1));
             }));
@@ -53,7 +44,7 @@ namespace ESMySql
             EventHandlers.Add("es_db:retrieveUser", new Action<string, CallbackDelegate>(async (identifier, cb) =>
                 {
                     Utils.DebugWriteLine($"Retriving user for {identifier}");
-                    MySQLResult result = await _mySQL.QueryResult($"SELECT * FROM users WHERE `identifier`='{identifier}';");
+                    MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE identifier=@identifier;", new Dictionary<string, dynamic> { { "@identifier", identifier } });
                     await Delay(0);
                     if (result.Count >= 1)
                     {
@@ -70,14 +61,19 @@ namespace ESMySql
             EventHandlers.Add("es_db:createUser", new Action<string, string, int, int>((identifier, license, cash, bank) =>
                {
                    Utils.DebugWriteLine($"Creating user for {identifier}");
-                   _mySQL.Query($"INSERT INTO users (`identifier`, `money`, `bank`, `group`, `permission_level`, `license`) VALUES ('{identifier}', {cash}, {bank}, 'user', 0, '{license}');");
+                   _mySQL.Query("INSERT INTO users (`identifier`, `money`, `bank`, `group`, `permission_level`, `license`) VALUES (@identifier, @cash, @bank, 'user', 0, @license);", new Dictionary<string, dynamic> {
+                       {"@identifier", identifier},
+                       {"@license", license},
+                       {"@cash", cash},
+                       {"@bank", bank},
+                   });
                }));
 
             //Retrieve User by license
             EventHandlers.Add("es_db:retrieveLicensedUser", new Action<string, CallbackDelegate>(async (identifier, cb) =>
             {
                 Utils.DebugWriteLine($"Retriving user with license {identifier}");
-                MySQLResult result = await _mySQL.QueryResult($"SELECT * FROM users WHERE `license`='{identifier}';");
+                MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE `license`=@license;", new Dictionary<string, dynamic> { { "@license", identifier } });
                 await Delay(0);
                 if (result.Count >= 1)
                 {
@@ -93,7 +89,7 @@ namespace ESMySql
             EventHandlers.Add("es_db:doesLicensedUserExist", new Action<string, CallbackDelegate>(async (identifier, cb) =>
             {
                 Utils.DebugWriteLine($"Checking for user with license {identifier}");
-                MySQLResult result = await _mySQL.QueryResult($"SELECT * FROM users WHERE `license`='{identifier}';");
+                MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE `license`=@license;", new Dictionary<string, dynamic> { { "@license", identifier } });
                 await Delay(0);
                 cb.Invoke((result.Count == 1));
             }));
@@ -104,27 +100,23 @@ namespace ESMySql
                   Utils.DebugWriteLine($"Updating user {identifier}");
                   StringBuilder sb = new StringBuilder();
                   IDictionary<string, object> pairs = (IDictionary<string, object>)update;
-                  int updateLength = 1;
-                  foreach (string key in pairs.Keys)
+                  Dictionary<string, dynamic> parameters = new Dictionary<string, dynamic>();
+                  parameters["@identifier"] = identifier;
+
+                  int updateLength = 0;
+                  foreach (KeyValuePair<string, object> kvp in pairs)
                   {
-                      string value = pairs[key].ToString();
-                      if (int.TryParse(value, out int intval))
-                      {
-                          sb.Append($"`{key}`={intval}");
-                      }
-                      else
-                      {
-                          sb.Append($"`{key}`='{value}'");
-                      }
-                      if (updateLength < pairs.Count)
-                      {
-                          sb.Append(",");
-                      }
+                      parameters["@" + kvp.Key] = kvp.Value;
+                      sb.Append(kvp.Key);
+                      sb.Append("=@");
+                      sb.Append(kvp.Key);
                       updateLength++;
+                      if(updateLength != pairs.Count)
+                          sb.Append(",");
                   }
-                  string query = $"UPDATE users SET {sb.ToString()} WHERE identifier='{identifier}'";
+                  string query = $"UPDATE users SET {sb.ToString()} WHERE identifier=@identifier;";
                   Utils.DebugWriteLine($"Update query is {query}");
-                  long result = await _mySQL.Query(query);
+                  long result = await _mySQL.Query(query, parameters);
                   await Delay(0);
                   cb.Invoke((result == 1));
               }));
