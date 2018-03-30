@@ -37,7 +37,7 @@ namespace ESMySql
                 Utils.DebugWriteLine($"Checking for user with {identifier}");
                 MySQLResult result = await _mySQL.QueryResult($"SELECT * FROM users WHERE `identifier`=@identifier LIMIT 1;", new Dictionary<string, dynamic> { { "@identifier", identifier } });
                 await Delay(0);
-                cb.Invoke((result.Count == 1));
+                cb?.Invoke((result.Count == 1));
             }));
             //Check if user exists
             EventHandlers.Add("es_db:retrieveUser", new Action<string, CallbackDelegate>(async (identifier, cb) =>
@@ -47,11 +47,11 @@ namespace ESMySql
                 await Delay(0);
                 if (result.Count >= 1)
                 {
-                    cb.Invoke(result[0]);
+                    cb?.Invoke(result[0]);
                 }
                 else
                 {
-                    cb.Invoke(false);
+                    cb?.Invoke(false);
                 }
             }));
 
@@ -75,11 +75,11 @@ namespace ESMySql
                 await Delay(0);
                 if (result.Count >= 1)
                 {
-                    cb.Invoke(result[0]);
+                    cb?.Invoke(result[0]);
                 }
                 else
                 {
-                    cb.Invoke(false);
+                    cb?.Invoke(false);
                 }
             }));
 
@@ -89,7 +89,7 @@ namespace ESMySql
                 Utils.DebugWriteLine($"Checking for user with license {identifier}");
                 MySQLResult result = await _mySQL.QueryResult("SELECT * FROM users WHERE `license`=@license LIMIT 1;", new Dictionary<string, dynamic> { { "@license", identifier } });
                 await Delay(0);
-                cb.Invoke((result.Count == 1));
+                cb?.Invoke((result.Count == 1));
             }));
 
             //Update user
@@ -116,7 +116,7 @@ namespace ESMySql
                 Utils.DebugWriteLine($"Update query is {query}");
                 long result = await _mySQL.Query(query, parameters);
                 await Delay(0);
-                cb.Invoke((result == 1));
+                cb?.Invoke((result == 1));
             }));
 
             _mySQL = new MySQL(settings, _scheduler);
